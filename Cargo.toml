@@ -1,8 +1,3 @@
-[workspace]
-members = [
-    "lsp_msg_derive",
-]
-
 [package]
 name = "lsp_msg"
 version = "0.1.0"
@@ -14,6 +9,6 @@ repository = "https://github.com/jsim2010/lsp_msg"
 
 [dependencies]
 jsonrpc-core = "11.0.0"
-lsp_msg_derive = { version = "0.1.0", path = "lsp_msg_derive" }
+lsp_msg_derive = "0.1.0"
 serde = { version = "1.0.90", features = ["derive"] }
 serde_repr = "0.1.3"
