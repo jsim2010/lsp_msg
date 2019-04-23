@@ -6,9 +6,105 @@ edition = "2018"
 description = "Language Server Protocol Messages"
 license = "MIT"
 repository = "https://github.com/jsim2010/lsp_msg"
+readme = "README.md"
+keywords = ["lsp"]
+categories = ["data-structures"]
 
 [dependencies]
 jsonrpc-core = "11.0.0"
-lsp_msg_derive = "0.1.0"
+lsp_msg_derive = "0.2.0"
+lsp_msg_internal = "0.1.0"
 serde = { version = "1.0.90", features = ["derive"] }
 serde_repr = "0.1.3"
+
+[package.metadata.commands]
+preeval = """
+(cargo-readme -V || cargo install cargo-readme) \
+&& (cargo-clippy -V || rustup component add clippy) \
+&& (cargo-fmt --version || rustup component add rustfmt) \
+&& cargo-readme readme > r\
+"""
+# Evaluates source code for issues.
+
+# Clippy command forbids all rustc and clippy lints except the following:
+# -D unreachable-code: #[derive(Deserialize_repr)] adds an allow.
+# -D unused-qualifications: #[derive(Default)] adds an allow.
+# -D unused-macros: #[derive(Serialize)] adds an allow.
+# -D rust-2018-idioms: #[derive(Serialize)] adds an allow.
+# -D unused-attributes: #[derive(Serialize)] adds an allow.
+# -A clippy::multiple-crate-versions: Invalid error due to lsp_msg_internal including lsp_msg_derive.
+# -A clippy::missing-inline-in-public-items: #[inline] not implemented for all derive-macros.
+# -A clippy::implicit-return: This goes against rust convention and would require return calls in inconvenient places (e.g. closures).
+eval = """
+set CLIPPY_DISABLE_DOCS_LINKS=1\
+&& cargo-clippy clippy --verbose -- \
+    -F warnings \
+    -F future-incompatible \
+    -F macro-use-extern-crate \
+    -F missing-copy-implementations \
+    -F missing-debug-implementations \
+    -F single-use-lifetimes \
+    -F trivial-casts \
+    -F trivial-numeric-casts \
+    -F unreachable-pub \
+    -F unused-imports \
+    -F unused-import-braces \
+    -F unused-lifetimes \
+    -F unused-results \
+    -F unused-variables \
+    -F unused-assignments \
+    -F dead-code \
+    -F unused-mut \
+    -F unreachable-patterns \
+    -F unused-must-use \
+    -F unused-unsafe \
+    -F path-statements \
+    -F unused-allocation \
+    -F unused-doc-comments \
+    -F unused-features \
+    -F unused-labels \
+    -F unused-parens \
+    -F clippy::pedantic \
+    -F clippy::nursery \
+    -F clippy::cargo-common-metadata \
+    -F clippy::wildcard-dependencies \
+    -F clippy::clone-on-ref-ptr \
+    -F clippy::dbg-macro \
+    -F clippy::decimal-literal-representation \
+    -F clippy::else-if-without-else \
+    -F clippy::float-arithmetic \
+    -F clippy::float-cmp-const \
+    -F clippy::get-unwrap \
+    -F clippy::indexing-slicing \
+    -F clippy::integer-arithmetic \
+    -F clippy::mem-forget \
+    -F clippy::missing-docs-in-private-items \
+    -F clippy::multiple-inherent-impl \
+    -F clippy::option-unwrap-used \
+    -F clippy::print-stdout \
+    -F clippy::result-unwrap-used \
+    -F clippy::shadow-reuse \
+    -F clippy::shadow-same \
+    -F clippy::string-add \
+    -F clippy::unimplemented \
+    -F clippy::use-debug \
+    -F clippy::wildcard-enum-match-arm \
+    -F clippy::wrong-pub-self-convention \
+    -F missing-docs \
+    -D unreachable-code \
+    -D unused-qualifications \
+    -D unused-macros \
+    -D unused-attributes \
+    -D rust-2018-idioms \
+    -A clippy::missing-inline-in-public-items \
+    -A clippy::multiple-crate-versions \
+    -A clippy::implicit-return \
+&& cargo-fmt -- --check \
+&& fc r README.md \
+&& cargo test --verbose --all-features\
+"""
+posteval = "if exist r rm r"
+
+prefix = "cargo-readme -V || cargo install cargo-readme"
+# Fixes all issues that can be done automatically.
+fix = "cargo-fmt && cargo-readme readme > README.md"

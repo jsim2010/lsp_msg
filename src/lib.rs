@@ -1,29 +1,8 @@
 use jsonrpc_core::Value;
 use lsp_msg_derive::{lsp_object, lsp_kind};
+use lsp_msg_internal::{Elective, MarkupKind};
 use serde::{Deserialize, Serialize};
 use serde_repr::{Deserialize_repr, Serialize_repr};
-
-#[lsp_kind]
-#[serde(untagged)]
-pub enum Elective<T> {
-    Absent,
-    Present(T)
-}
-
-impl<T> Elective<T> {
-    fn is_absent(&self) -> bool {
-        match self {
-            Elective::Absent => true,
-            Elective::Present(_) => false,
-        }
-    }
-}
-
-impl<T> Default for Elective<T> {
-    fn default() -> Self {
-        Elective::Absent
-    }
-}
 
 /// The first request from the client to the server.
 #[lsp_object]
@@ -375,15 +354,6 @@ struct CompletionItemKindCapabilities {
     value_set: Elective<Vec<u64>>,
 }
 
-/// Describes the types of content in various result literals.
-#[lsp_kind]
-enum MarkupKind {
-    /// Plain text.
-    Plaintext,
-    /// Markdown.
-    Markdown,
-}
-
 /// Describes capabilities specific to `SignatureInformation`s.
 #[lsp_object(allow_missing, markup_kind_list = "documentation")]
 struct SignatureInformationCapabilities {
@@ -601,8 +571,12 @@ struct CompletionOptions {
 struct SignatureHelpOptions {
 }
 
-#[lsp_object(document_selector, static_registration)]
+#[lsp_object(static_registration)]
 struct GotoOptions {
+    /// Identifies the scope of the registration.
+    ///
+    /// If `Option::None`, `DocumentSelector` provided by client will be used.
+    document_selector: Option<char>,
 }
 
 #[lsp_kind]
@@ -653,8 +627,14 @@ struct RenameOptions {
 struct DocumentLinkOptions {
 }
 
-#[lsp_object(document_selector, static_registration)]
+// TODO: Look into how to remove repetition for document_selector.
+// TODO: Add DocumentSelector object.
+#[lsp_object(static_registration)]
 struct StaticDocumentSelectorOptions<T> {
+    /// Identifies the scope of the registration.
+    ///
+    /// If `Option::None`, `DocumentSelector` provided by client will be used.
+    document_selector: Option<char>,
     options: T,
 }
 
@@ -910,27 +890,33 @@ pub struct Position {
 }
 
 impl Position {
+    /// Moves 1 line up.
     pub fn move_up(&mut self) {
         self.line -= 1;
     }
 
+    /// Moves to the end of the line.
     pub fn move_to_end_of_line(&mut self) {
         self.character = u64::max_value();
     }
 
+    /// Moves 1 character to the left.
     pub fn move_left(&mut self) {
         self.character -= 1;
     }
 
+    /// Moves 1 character to the right.
     pub fn move_right(&mut self) {
         self.character += 1;
     }
 
-    pub fn is_first_character(&self) -> bool {
+    /// `Position` is at the start of its line.
+    pub const fn is_first_character(&self) -> bool {
         self.character == 0
     }
 
-    pub fn is_first_line(&self) -> bool {
+    /// `Position` is at the first line in its text document.
+    pub const fn is_first_line(&self) -> bool {
         self.line == 0
     }
 }
@@ -966,16 +952,23 @@ struct Diagnostic {
 /// Supported severities of a diagnostic.
 #[lsp_kind]
 enum DiagnosticSeverity {
+    /// A `Diagnostic` that prevents successful completion.
     Error = 1,
+    /// A `Diagnostic` that does not prevent successful completion but may need to be addressed.
     Warning,
+    /// A `Diagnotic` that provides noncritical information that does not need to be addressed.
     Information,
+    /// A `Diagnostic` that may assist debugging efforts.
     Hint,
 }
 
+/// A code representing a `Diagnostic`.
 #[lsp_kind]
 #[serde(untagged)]
 enum DiagnosticCode {
+    /// Number format.
     Number(i64),
+    /// String format.
     String(String),
 }
 
@@ -988,9 +981,11 @@ struct DiagnosticRelatedInformation {
     message: String,
 }
 
-/// A `Range` in a text document.
+/// A part of a text document.
 #[lsp_object]
 struct Location {
+    /// The URI of the text document.
     uri: String,
+    /// The `Range` within the text document.
     range: Range,
 }
