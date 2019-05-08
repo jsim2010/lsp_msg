@@ -12,12 +12,11 @@ categories = ["data-structures"]
 
 [dependencies]
 jsonrpc-core = "11.0.0"
-lsp_msg_derive = "0.3.0"
-lsp_msg_internal = "0.3.0"
+lsp_msg_derive = { path = "../lsp_msg_derive" } #"0.3.0"
+lsp_msg_internal = { path = "../lsp_msg_internal" } #"0.3.0"
 serde = { version = "1.0.90", features = ["derive"] }
 serde_json = "1.0.39"
 serde_repr = "0.1.3"
-spec = { path = "../spec" } #"0.2.0"
 
 [dev-dependencies]
 serde_test = "1.0.90"
@@ -37,6 +36,7 @@ preeval = """
 # -D unused-macros: #[derive(Serialize)] adds an allow.
 # -D rust-2018-idioms: #[derive(Serialize)] adds an allow.
 # -D unused-attributes: #[derive(Serialize)] adds an allow.
+# -D clippy::missing-const-for-fn: #[derive(Clone)] adds an allow.
 # -A clippy::multiple-crate-versions: Invalid error due to lsp_msg_internal including lsp_msg_derive.
 # -A clippy::missing-inline-in-public-items: #[inline] not implemented for all derive-macros.
 # -A clippy::implicit-return: This goes against rust convention and would require return calls in inconvenient places (e.g. closures).
@@ -83,7 +83,6 @@ set CLIPPY_DISABLE_DOCS_LINKS=1\
     -F clippy::integer-arithmetic \
     -F clippy::mem-forget \
     -F clippy::multiple-inherent-impl \
-    -F clippy::missing-const-for-fn \
     -F clippy::missing-docs-in-private-items \
     -F clippy::option-unwrap-used \
     -F clippy::print-stdout \
@@ -100,6 +99,7 @@ set CLIPPY_DISABLE_DOCS_LINKS=1\
     -D unused-macros \
     -D unused-attributes \
     -D rust-2018-idioms \
+    -D clippy::missing-const-for-fn \
     -A clippy::missing-inline-in-public-items \
     -A clippy::multiple-crate-versions \
     -A clippy::implicit-return \

@@ -1,8 +1,14 @@
 //! Defines structures for interacting with LSP messages.
 mod general;
+mod structures;
 
-pub use general::{FailureHandlingKind, ResourceOperationKind, WorkspaceEditCapabilities};
+pub use general::{
+    DidChangeConfigurationCapabilities, DidChangeWatchedFilesCapabilities,
+    ExecuteCommandCapabilities, FailureHandlingKind, ResourceOperationKind, SymbolCapabilities,
+    SymbolKindCapabilities, WorkspaceClientCapabilities, WorkspaceEditCapabilities,
+};
 pub use lsp_msg_internal::{Elective, MarkupKind};
+pub use structures::{Diagnostic, Range, Symbol, SymbolKind, TextDocumentItem};
 
 use jsonrpc_core::Value;
 use lsp_msg_derive::{lsp_kind, lsp_object};
@@ -55,27 +61,6 @@ pub struct ClientCapabilities {
     experimental: Elective<Value>,
 }
 
-/// Defines capabilities the client provides on the workspace.
-#[lsp_object(allow_missing)]
-struct WorkspaceClientCapabilities {
-    /// Supports applying batch edits to the workspace by the request `workspace/applyEdit`.
-    apply_edit: bool,
-    /// Capabilities specific to `WorkspaceEdit`s.
-    workspace_edit: WorkspaceEditCapabilities,
-    /// Capabilities specific to the `workspace/didChangeConfiguration` notification.
-    did_change_configuration: DidChangeConfigurationCapabilities,
-    /// Capabilities specific to the `worksapce/didChangeWatchedFiles` notification.
-    did_change_watched_files: DidChangeWatchedFilesCapabilities,
-    /// Capabilities specific to the `workspace/symbol` request.
-    symbol: SymbolCapabilities,
-    /// Capabilities specific to the `workspace/executeCommand` request.
-    execute_command: ExecuteCommandCapabilities,
-    /// Supports workspace folders.
-    workspace_folders: bool,
-    /// Supports `workspace/configuration` requests.
-    configuration: bool,
-}
-
 /// Defines capabilities the client provides on text documents.
 #[lsp_object(allow_missing)]
 struct TextDocumentClientCapabilities {
@@ -123,34 +108,6 @@ struct TextDocumentClientCapabilities {
     /// Capabilities specific to the `textDocument/foldingRange` request.
     folding_range: FoldingRangeCapabilities,
 }
-
-/// Defines capabilities specific to the `workspace/didChangeConfiguration` notification.
-#[lsp_object(
-    allow_missing,
-    dynamic_registration = "`workspace/didChangeConfiguration` notification"
-)]
-struct DidChangeConfigurationCapabilities {}
-
-/// Defines capabilities specific to the `workspace/didChangeWatchedFiles` notification.
-#[lsp_object(
-    allow_missing,
-    dynamic_registration = "`workspace/didChangeWatchedFiles` notification"
-)]
-struct DidChangeWatchedFilesCapabilities {}
-
-/// Defines capabilities specific to the `workspace/symbol` request.
-#[lsp_object(allow_missing, dynamic_registration = "`workspace/symbol` request")]
-struct SymbolCapabilities {
-    /// Capabilities specific to the `SymbolKind` in the `workspace/symbol` request.
-    symbol_kind: SymbolKindCapabilities,
-}
-
-/// Defines capabilities specific to the `workspace/executeCommand` request.
-#[lsp_object(
-    allow_missing,
-    dynamic_registration = "`workspace/executeCommand` request"
-)]
-struct ExecuteCommandCapabilities {}
 
 /// Defines capabilities specific to text document synchronization.
 #[lsp_object(allow_missing, dynamic_registration = "text document synchronization")]
@@ -331,10 +288,6 @@ struct FoldingRangeCapabilities {
     line_folding_only: bool,
 }
 
-/// Describes capabilities specific to `SymbolKind`s.
-#[lsp_object(value_set("SymbolKind", "SymbolKind::is_version1()"))]
-struct SymbolKindCapabilities {}
-
 /// Describes capabilities specific to `CompletionItem`s.
 #[lsp_object(allow_missing, markup_kind_list = "documentation")]
 struct CompletionItemCapabilities {
@@ -364,80 +317,6 @@ struct SignatureInformationCapabilities {
 struct CodeActionLiteralCapabilities {
     /// Capabilities specific to `CodeActionKind`s.
     code_action_kind: CodeActionKindCapabilities,
-}
-
-/// A symbol kind.
-#[lsp_kind(type = "string")]
-#[derive(Clone, Copy, PartialOrd)]
-pub enum SymbolKind {
-    /// A file.
-    File = 1,
-    /// A module.
-    Module,
-    /// A namespace.
-    Namespace,
-    /// A package.
-    Package,
-    /// A class.
-    Class,
-    /// A method.
-    Method,
-    /// A property.
-    Property,
-    /// A field.
-    Field,
-    /// A constructor.
-    Constructor,
-    /// An enum.
-    Enum,
-    /// An interface.
-    Interface,
-    /// A function.
-    Function,
-    /// A variable.
-    Variable,
-    /// A constant.
-    Constant,
-    /// A string.
-    String,
-    /// A number.
-    Number,
-    /// A boolean.
-    Boolean,
-    /// An array.
-    Array,
-    /// An object.
-    Object,
-    /// A key.
-    Key,
-    /// A null.
-    Null,
-    /// An enum member.
-    EnumMember,
-    /// A struct.
-    Struct,
-    /// An event.
-    Event,
-    /// An operator.
-    Operator,
-    /// A type parameter.
-    TypeParameter,
-    /// An unknown symbol kind.
-    #[serde(other)]
-    Unknown,
-}
-
-impl SymbolKind {
-    /// Returns if `SymbolKind` is supported in version 1.
-    pub fn is_version1(self) -> bool {
-        self <= SymbolKind::Array
-    }
-}
-
-impl Default for SymbolKind {
-    fn default() -> Self {
-        SymbolKind::Property
-    }
 }
 
 /// The kind of a `CompletionItem`.
@@ -851,153 +730,6 @@ impl From<TextDocumentItem> for DidOpenTextDocumentParams {
     }
 }
 
-/// An item to transfer a text document from the client to the server.
-#[lsp_object]
-#[derive(Clone)]
-pub struct TextDocumentItem {
-    /// URI of text document.
-    pub uri: String,
-    /// Language identifier of text document.
-    pub language_id: LanguageId,
-    /// Version number of text document.
-    pub version: i64,
-    /// Content of the text document.
-    pub text: String,
-}
-
-impl TextDocumentItem {
-    /// Increments the version.
-    pub fn increment_version(&mut self) {
-        self.version += 1;
-    }
-}
-
-/// A language identifer of a text document.
-#[lsp_kind]
-#[derive(Clone)]
-pub enum LanguageId {
-    /// A language id that has been defined.
-    Defined(LanguageIdKind),
-    /// A language id that has not been defined.
-    Undefined(String),
-}
-
-impl Default for LanguageId {
-    fn default() -> Self {
-        LanguageId::Undefined(String::default())
-    }
-}
-
-/// The defined language ids.
-#[lsp_kind(type = "language_id")]
-#[derive(Clone, Copy)]
-pub enum LanguageIdKind {
-    /// Windows Bat language.
-    Bat,
-    /// BibTeX language.
-    Bibtex,
-    /// Clojure language.
-    Clojure,
-    /// Coffeescript language.
-    Coffeescript,
-    /// C language.
-    C,
-    /// C++ language.
-    Cpp,
-    /// C# language.
-    Csharp,
-    /// CSS language.
-    Css,
-    /// Diff language.
-    Diff,
-    /// Dart language.
-    Dart,
-    /// Dockerfile language.
-    Dockerfile,
-    /// F# language.
-    Fsharp,
-    /// Git commit message format.
-    GitCommit,
-    /// Git rebase message format.
-    GitRebase,
-    /// Go language.
-    Go,
-    /// Groovy language.
-    Groovy,
-    /// Handlebars language.
-    Handlebars,
-    /// HTML language.
-    Html,
-    /// Ini language.
-    Ini,
-    /// Java language.
-    Java,
-    /// JavaScript language.
-    Javascript,
-    /// JSON language.
-    Json,
-    /// LaTeX language.
-    Latex,
-    /// Less language.
-    Less,
-    /// Lua language.
-    Lua,
-    /// Makefile language.
-    Makefile,
-    /// Markdown language.
-    Markdown,
-    /// Objective-C language.
-    ObjectiveC,
-    /// Objective-C++ language.
-    ObjectiveCpp,
-    /// Perl language.
-    Perl,
-    /// Perl 6 language.
-    Perl6,
-    /// PHP language.
-    Php,
-    /// Powershell language.
-    Powershell,
-    /// Pug language.
-    Jade,
-    /// Python language.
-    Python,
-    /// R language.
-    R,
-    /// Razor (cshtml) language.
-    Razor,
-    /// Ruby language.
-    Ruby,
-    /// Rust language.
-    Rust,
-    /// Sass language with curly bracket syntax.
-    Scss,
-    /// Sass language with indented syntax.
-    Sass,
-    /// Scala language.
-    Scala,
-    /// ShaderLab language.
-    Shaderlab,
-    /// Shell Script (Bash) language.
-    Shellscript,
-    /// SQL language.
-    Sql,
-    /// Swift language.
-    Swift,
-    /// TypeScript language.
-    Typescript,
-    /// TeX language.
-    Tex,
-    /// Visual Basic language.
-    Vb,
-    /// XML language.
-    Xml,
-    /// XSL language.
-    Xsl,
-    /// YAML language.
-    Yaml,
-}
-
 /// Notification sent from client to server to signal changes to a text document.
 #[lsp_object]
 pub struct DidChangeTextDocumentParams {
@@ -1067,91 +799,6 @@ impl TextDocumentContentChangeEvent {
     }
 }
 
-/// Start and end `Position`s where the end `Position` is exclusive.
-#[lsp_object]
-#[derive(Clone, Copy, Eq)]
-pub struct Range {
-    /// Start `Position` of the `Range`.
-    pub start: Position,
-    /// End `Position` of the `Range`.
-    pub end: Position,
-}
-
-impl Range {
-    /// Creates a new `Range` that describes an entire line.
-    pub const fn with_line(line: u64) -> Self {
-        Self::with_partial_line(line, 0, u64::max_value())
-    }
-
-    /// Creates a new `Range` that describes the specified characters on a line.
-    pub const fn with_partial_line(line: u64, start: u64, end: u64) -> Self {
-        Self {
-            start: Position {
-                line,
-                character: start,
-            },
-            end: Position {
-                line,
-                character: end,
-            },
-        }
-    }
-}
-
-impl From<Position> for Range {
-    fn from(value: Position) -> Self {
-        Self {
-            start: value,
-            end: value,
-        }
-    }
-}
-
-/// A line and character offset of a text document.
-#[lsp_object]
-#[derive(Clone, Copy, Eq)]
-pub struct Position {
-    /// Zero-based index of the line.
-    pub line: u64,
-    /// Zero-based character offset of a line that represents the gap before the character at the
-    /// offset.
-    ///
-    /// If `character` is greater than the line length, it defaults to the line length.
-    pub character: u64,
-}
-
-impl Position {
-    /// Moves 1 line up.
-    pub fn move_up(&mut self) {
-        self.line -= 1;
-    }
-
-    /// Moves to the end of the line.
-    pub fn move_to_end_of_line(&mut self) {
-        self.character = u64::max_value();
-    }
-
-    /// Moves 1 character to the left.
-    pub fn move_left(&mut self) {
-        self.character -= 1;
-    }
-
-    /// Moves 1 character to the right.
-    pub fn move_right(&mut self) {
-        self.character += 1;
-    }
-
-    /// `Position` is at the start of its line.
-    pub const fn is_first_character(&self) -> bool {
-        self.character == 0
-    }
-
-    /// `Position` is at the first line in its text document.
-    pub const fn is_first_line(&self) -> bool {
-        self.line == 0
-    }
-}
-
 /// Notification sent from the server to the client to signal results of validation runs.
 #[lsp_object]
 pub struct PublishDiagnosticsParams {
@@ -1159,63 +806,4 @@ pub struct PublishDiagnosticsParams {
     uri: String,
     /// Diagnostic information items.
     diagnostics: Vec<Diagnostic>,
-}
-
-/// A diagnostic such as a compiler error or warning.
-#[lsp_object]
-struct Diagnostic {
-    /// `Range` at which the message applies.
-    range: Range,
-    /// The severity of the diagnostic.
-    ///
-    /// If `Elective::Absent`, client is responsible for interpreting severity.
-    severity: Elective<DiagnosticSeverity>,
-    /// Code of the diagnostic.
-    code: Elective<DiagnosticCode>,
-    /// Human-readable description of the source of the diagnostic.
-    source: Elective<String>,
-    /// Message of the diagnostic.
-    message: String,
-    /// Related information about a diagnostic.
-    related_information: Elective<Vec<DiagnosticRelatedInformation>>,
-}
-
-/// Supported severities of a diagnostic.
-#[lsp_kind]
-enum DiagnosticSeverity {
-    /// A `Diagnostic` that prevents successful completion.
-    Error = 1,
-    /// A `Diagnostic` that does not prevent successful completion but may need to be addressed.
-    Warning,
-    /// A `Diagnotic` that provides noncritical information that does not need to be addressed.
-    Information,
-    /// A `Diagnostic` that may assist debugging efforts.
-    Hint,
-}
-
-/// A code representing a `Diagnostic`.
-#[lsp_kind]
-enum DiagnosticCode {
-    /// Number format.
-    Number(i64),
-    /// String format.
-    String(String),
-}
-
-/// A related message for a `Diagnostic`.
-#[lsp_object]
-struct DiagnosticRelatedInformation {
-    /// Location of the related information.
-    location: Location,
-    /// Message of the related information.
-    message: String,
-}
-
-/// A part of a text document.
-#[lsp_object]
-struct Location {
-    /// The URI of the text document.
-    uri: String,
-    /// The `Range` within the text document.
-    range: Range,
 }
