@@ -1,29 +1,19 @@
+//! Defines structures for interacting with LSP messages.
+mod general;
+mod structures;
+
+pub use general::{
+    DidChangeConfigurationCapabilities, DidChangeWatchedFilesCapabilities,
+    ExecuteCommandCapabilities, FailureHandlingKind, ResourceOperationKind, SymbolCapabilities,
+    SymbolKindCapabilities, WorkspaceClientCapabilities, WorkspaceEditCapabilities,
+};
+pub use lsp_msg_internal::{Elective, MarkupKind};
+pub use structures::{Diagnostic, Range, Symbol, SymbolKind, TextDocumentItem};
+
 use jsonrpc_core::Value;
-use lsp_msg_derive::{lsp_object, lsp_kind};
+use lsp_msg_derive::{lsp_kind, lsp_object};
 use serde::{Deserialize, Serialize};
 use serde_repr::{Deserialize_repr, Serialize_repr};
-
-#[lsp_kind]
-#[serde(untagged)]
-pub enum Elective<T> {
-    Absent,
-    Present(T)
-}
-
-impl<T> Elective<T> {
-    fn is_absent(&self) -> bool {
-        match self {
-            Elective::Absent => true,
-            Elective::Present(_) => false,
-        }
-    }
-}
-
-impl<T> Default for Elective<T> {
-    fn default() -> Self {
-        Elective::Absent
-    }
-}
 
 /// The first request from the client to the server.
 #[lsp_object]
@@ -53,7 +43,7 @@ pub struct InitializeParams {
     ///
     /// If `Elective::Absent`, client does not support workspace folders. If `Option::None`, client supports
     /// workspace folders but none are configured.
-    pub workspace_folders: Elective<Option<Vec<WorkspaceFolder>>>
+    pub workspace_folders: Elective<Option<Vec<WorkspaceFolder>>>,
 }
 
 /// Defines capabilities for dynamic registration, workspace and text document features the client
@@ -69,27 +59,6 @@ pub struct ClientCapabilities {
     text_document: TextDocumentClientCapabilities,
     /// Experimental client capabilities.
     experimental: Elective<Value>,
-}
-
-/// Defines capabilities the client provides on the workspace.
-#[lsp_object(allow_missing)]
-struct WorkspaceClientCapabilities {
-    /// Supports applying batch edits to the workspace by the request `workspace/applyEdit`.
-    apply_edit: bool,
-    /// Capabilities specific to `WorkspaceEdit`s.
-    workspace_edit: WorkspaceEditCapabilities,
-    /// Capabilities specific to the `workspace/didChangeConfiguration` notification.
-    did_change_configuration: DidChangeConfigurationCapabilities,
-    /// Capabilities specific to the `worksapce/didChangeWatchedFiles` notification.
-    did_change_watched_files: DidChangeWatchedFilesCapabilities,
-    /// Capabilities specific to the `workspace/symbol` request.
-    symbol: SymbolCapabilities,
-    /// Capabilities specific to the `workspace/executeCommand` request.
-    execute_command: ExecuteCommandCapabilities,
-    /// Supports workspace folders.
-    workspace_folders: bool,
-    /// Supports `workspace/configuration` requests.
-    configuration: bool,
 }
 
 /// Defines capabilities the client provides on text documents.
@@ -140,39 +109,6 @@ struct TextDocumentClientCapabilities {
     folding_range: FoldingRangeCapabilities,
 }
 
-/// Defines capabilities specific to `WorkspaceEdit`s.
-#[lsp_object(allow_missing)]
-struct WorkspaceEditCapabilities {
-    /// Supports versioned document changes in `WorkspaceEdit`s.
-    document_changes: bool,
-    /// The supported resource operations.
-    resource_operations: Elective<Vec<ResourceOperationKind>>,
-    /// The failure handling strategy if applying the `WorkspaceEdit` fails.
-    failure_handling: Elective<FailureHandlingKind>,
-}
-
-/// Defines capabilities specific to the `workspace/didChangeConfiguration` notification.
-#[lsp_object(allow_missing, dynamic_registration = "`workspace/didChangeConfiguration` notification")]
-struct DidChangeConfigurationCapabilities {
-}
-
-/// Defines capabilities specific to the `workspace/didChangeWatchedFiles` notification.
-#[lsp_object(allow_missing, dynamic_registration = "`workspace/didChangeWatchedFiles` notification")]
-struct DidChangeWatchedFilesCapabilities {
-}
-
-/// Defines capabilities specific to the `workspace/symbol` request.
-#[lsp_object(allow_missing, dynamic_registration = "`workspace/symbol` request")]
-struct SymbolCapabilities {
-    /// Capabilities specific to the `SymbolKind` in the `workspace/symbol` request.
-    symbol_kind: SymbolKindCapabilities,
-}
-
-/// Defines capabilities specific to the `workspace/executeCommand` request.
-#[lsp_object(allow_missing, dynamic_registration = "`workspace/executeCommand` request")]
-struct ExecuteCommandCapabilities {
-}
-
 /// Defines capabilities specific to text document synchronization.
 #[lsp_object(allow_missing, dynamic_registration = "text document synchronization")]
 struct SynchronizationCapabilities {
@@ -185,7 +121,10 @@ struct SynchronizationCapabilities {
 }
 
 /// Defines capabilities specific to the `textDocument/completion` request.
-#[lsp_object(allow_missing, dynamic_registration = "`textDocument/completion` request")]
+#[lsp_object(
+    allow_missing,
+    dynamic_registration = "`textDocument/completion` request"
+)]
 struct CompletionCapabilities {
     /// Capabilities specific to `CompletionItem`s.
     completion_item: CompletionItemCapabilities,
@@ -196,29 +135,42 @@ struct CompletionCapabilities {
 }
 
 /// Defines capabilities specific to the `textDocument/hover` request.
-#[lsp_object(allow_missing, dynamic_registration = "`textDocument/hover` request", markup_kind_list = "content")]
-struct HoverCapabilities {
-}
+#[lsp_object(
+    allow_missing,
+    dynamic_registration = "`textDocument/hover` request",
+    markup_kind_list = "content"
+)]
+struct HoverCapabilities {}
 
 /// Defines capabilities specific to the `textDocument/signatureHelp` request.
-#[lsp_object(allow_missing, dynamic_registration = "`textDocument/signatureHelp` request")]
+#[lsp_object(
+    allow_missing,
+    dynamic_registration = "`textDocument/signatureHelp` request"
+)]
 struct SignatureHelpCapabilities {
     /// Capabilities specific to `SignatureInformation`s.
     signature_information: SignatureInformationCapabilities,
 }
 
 /// Defines capabilities specific to the `textDocument/references` request.
-#[lsp_object(allow_missing, dynamic_registration = "`textDocument/references` request")]
-struct ReferencesCapabilities {
-}
+#[lsp_object(
+    allow_missing,
+    dynamic_registration = "`textDocument/references` request"
+)]
+struct ReferencesCapabilities {}
 
 /// Defines capabilities specific to the `textDocument/documentHighlight` request.
-#[lsp_object(allow_missing, dynamic_registration = "`textDocument/documentHighlight` request")]
-struct DocumentHighlightCapabilities {
-}
+#[lsp_object(
+    allow_missing,
+    dynamic_registration = "`textDocument/documentHighlight` request"
+)]
+struct DocumentHighlightCapabilities {}
 
 /// Defines capabilities specific to the `textDocument/documentSymbol` request.
-#[lsp_object(allow_missing, dynamic_registration = "`textDocument/documentSymbol` request")]
+#[lsp_object(
+    allow_missing,
+    dynamic_registration = "`textDocument/documentSymbol` request"
+)]
 struct DocumentSymbolCapabilities {
     /// Capabilities specific to `SymbolKind` in the `textDocument/documentSymbol` request.
     symbol_kind: SymbolKindCapabilities,
@@ -227,62 +179,86 @@ struct DocumentSymbolCapabilities {
 }
 
 /// Defines capabilities specific to the `textDocument/formatting` request.
-#[lsp_object(allow_missing, dynamic_registration = "`textDocument/formatting` request")]
-struct FormattingCapabilities {
-}
+#[lsp_object(
+    allow_missing,
+    dynamic_registration = "`textDocument/formatting` request"
+)]
+struct FormattingCapabilities {}
 
 /// Defines capabilities specific to the `textDocument/rangeFormatting` request.
-#[lsp_object(allow_missing, dynamic_registration = "`textDocument/rangeFormatting` request")]
-struct RangeFormattingCapabilities {
-}
+#[lsp_object(
+    allow_missing,
+    dynamic_registration = "`textDocument/rangeFormatting` request"
+)]
+struct RangeFormattingCapabilities {}
 
 /// Defines capabilities specific to the `textDocument/onTypeFormatting` request.
-#[lsp_object(allow_missing, dynamic_registration = "`textDocument/onTypeFormatting` request")]
-struct OnTypeFormattingCapabilities {
-}
+#[lsp_object(
+    allow_missing,
+    dynamic_registration = "`textDocument/onTypeFormatting` request"
+)]
+struct OnTypeFormattingCapabilities {}
 
 /// Defines capabilities specific to the `textDocument/declaration` request.
-#[lsp_object(allow_missing, dynamic_registration = "`textDocument/declaration` request", link_support = "declaration")]
-struct DeclarationCapabilities {
-}
+#[lsp_object(
+    allow_missing,
+    dynamic_registration = "`textDocument/declaration` request",
+    link_support = "declaration"
+)]
+struct DeclarationCapabilities {}
 
 /// Defines capabilities specific to the `textDocument/definition` request.
-#[lsp_object(allow_missing, dynamic_registration = "`textDocument/definition` request", link_support = "definition")]
-struct DefinitionCapabilities {
-}
+#[lsp_object(
+    allow_missing,
+    dynamic_registration = "`textDocument/definition` request",
+    link_support = "definition"
+)]
+struct DefinitionCapabilities {}
 
 /// Defines capabilities specific to the `textDocument/typeDefinition` request.
-#[lsp_object(allow_missing, dynamic_registration = "`textDocument/typeDefinition` request", link_support = "definition")]
-struct TypeDefinitionCapabilities {
-}
+#[lsp_object(
+    allow_missing,
+    dynamic_registration = "`textDocument/typeDefinition` request",
+    link_support = "definition"
+)]
+struct TypeDefinitionCapabilities {}
 
 /// Defines capabilities specific to the `textDocument/implementation` request.
-#[lsp_object(allow_missing, dynamic_registration = "`textDocument/implementation` request", link_support = "implementation")]
-struct ImplementationCapabilities {
-}
+#[lsp_object(
+    allow_missing,
+    dynamic_registration = "`textDocument/implementation` request",
+    link_support = "implementation"
+)]
+struct ImplementationCapabilities {}
 
 /// Defines capabilities specific to the `textDocument/codeAction` request.
-#[lsp_object(allow_missing, dynamic_registration = "`textDocument/codeAction` request")]
+#[lsp_object(
+    allow_missing,
+    dynamic_registration = "`textDocument/codeAction` request"
+)]
 struct CodeActionCapabilities {
     /// Capabilities specific to code action literals.
     code_action_literal_support: Elective<CodeActionLiteralCapabilities>,
 }
 
 /// Defines capabilities specific to the `textDocument/codeLens` request.
-#[lsp_object(allow_missing, dynamic_registration = "`textDocument/codeLens` request")]
-struct CodeLensCapabilities {
-}
+#[lsp_object(
+    allow_missing,
+    dynamic_registration = "`textDocument/codeLens` request"
+)]
+struct CodeLensCapabilities {}
 
 /// Defines capabilities specific to the `textDocument/documentLink` request.
-#[lsp_object(allow_missing, dynamic_registration = "`textDocument/documentLink` request")]
-struct DocumentLinkCapabilities {
-}
+#[lsp_object(
+    allow_missing,
+    dynamic_registration = "`textDocument/documentLink` request"
+)]
+struct DocumentLinkCapabilities {}
 
 /// Defines capabilities specific to the `textDocument/documentColor` and
 /// `textDocument/colorPresentation` requests.
 #[lsp_object(allow_missing, dynamic_registration = "color provider")]
-struct ColorProviderCapabilities {
-}
+struct ColorProviderCapabilities {}
 
 /// Defines capabilities specific to the `textDocument/rename` request.
 #[lsp_object(allow_missing, dynamic_registration = "`textDocument/rename` request")]
@@ -299,7 +275,10 @@ struct PublishDiagnosticsCapabilities {
 }
 
 /// Defines capabilities specific to the `textDocument/foldingRange` request.
-#[lsp_object(allow_missing, dynamic_registration = "`textDocument/foldingRange` request")]
+#[lsp_object(
+    allow_missing,
+    dynamic_registration = "`textDocument/foldingRange` request"
+)]
 struct FoldingRangeCapabilities {
     /// The preferred maximum number of folding ranges per document.
     ///
@@ -307,48 +286,6 @@ struct FoldingRangeCapabilities {
     range_limit: u64,
     /// Only supports folding complete lines.
     line_folding_only: bool,
-}
-
-/// The kind of resource operations.
-#[lsp_kind]
-enum ResourceOperationKind {
-    /// Creating new files and folders.
-    Create,
-    /// Renaming existing files and folders.
-    Rename,
-    /// Deleting existing files and folders.
-    Delete,
-}
-
-/// The strategy of the client to handle a failure to apply a `WorkspaceEdit`.
-#[lsp_kind]
-enum FailureHandlingKind {
-    /// Operations are simply aborted if one of the changes fails.
-    ///
-    /// All operations executed before the failing operation stayed executed.
-    Abort,
-    /// All operations are executed transactional.
-    ///
-    /// Either all operations succeed or no changes are applied to the workspace.
-    Transactional,
-    /// Textual file changes are executed transactional and resource changes are abort.
-    TextOnlyTransactional,
-    /// Client tries to undo operations already executed.
-    ///
-    /// There is no guarantee the undo is successful.
-    Undo,
-}
-
-/// Describes capabilities specific to `SymbolKind`s.
-#[lsp_object(allow_missing)]
-struct SymbolKindCapabilities {
-    // TODO: Does it make sense to add an attribute for adding value_set property?
-    // TODO: Is there a way for serde to handle unknown SymbolKinds?
-    /// The supported `SymbolKind` values.
-    ///
-    /// If absent, only supports the `SymbolKind`s <= `SymbolKind::Array`. Otherwise, falls back to
-    /// a default value when unknown.
-    value_set: Elective<Vec<u64>>,
 }
 
 /// Describes capabilities specific to `CompletionItem`s.
@@ -365,24 +302,8 @@ struct CompletionItemCapabilities {
 }
 
 /// Describes capabilities specific to `CompletionItemKind`s.
-#[lsp_object(allow_missing)]
-struct CompletionItemKindCapabilities {
-    // TODO: Is there a way for serde to handle unknown CodeActionKinds?
-    /// The supported `CompletionItemKind`s.
-    ///
-    /// If absent, only supports the `CompletionItemKind`s <= `CompletionItemKind::Reference`.
-    /// Otherwise, falls back to a default value when unknown.
-    value_set: Elective<Vec<u64>>,
-}
-
-/// Describes the types of content in various result literals.
-#[lsp_kind]
-enum MarkupKind {
-    /// Plain text.
-    Plaintext,
-    /// Markdown.
-    Markdown,
-}
+#[lsp_object(value_set("CompletionItemKind", "CompletionItemKind::is_version1()"))]
+struct CompletionItemKindCapabilities {}
 
 /// Describes capabilities specific to `SignatureInformation`s.
 #[lsp_object(allow_missing, markup_kind_list = "documentation")]
@@ -398,65 +319,76 @@ struct CodeActionLiteralCapabilities {
     code_action_kind: CodeActionKindCapabilities,
 }
 
-/// A symbol kind.
-#[lsp_kind]
-enum SymbolKind {
-    File = 1,
-    Module,
-    Namespace,
-    Package,
-    Class,
+/// The kind of a `CompletionItem`.
+#[lsp_kind(type = "string")]
+#[derive(Clone, Copy, PartialOrd)]
+pub enum CompletionItemKind {
+    /// A text.
+    Text = 1,
+    /// A method.
     Method,
-    Property,
-    Field,
-    Constructor,
-    Enum,
-    Interface,
+    /// A function.
     Function,
+    /// A constructor.
+    Constructor,
+    /// A field.
+    Field,
+    /// A variable.
     Variable,
-    Constant,
-    String,
-    Number,
-    Boolean,
-    Array,
-    Object,
-    Key,
-    Null,
+    /// A class.
+    Class,
+    /// An interface.
+    Interface,
+    /// A module.
+    Module,
+    /// A property.
+    Property,
+    /// A unit.
+    Unit,
+    /// A value.
+    Value,
+    /// An enum.
+    Enum,
+    /// A keyword.
+    Keyword,
+    /// A snippet.
+    Snippet,
+    /// A color.
+    Color,
+    /// A file.
+    File,
+    /// A reference.
+    Reference,
+    /// A folder.
+    Folder,
+    /// An enum member.
     EnumMember,
+    /// A constant.
+    Constant,
+    /// A struct.
     Struct,
+    /// An event.
     Event,
+    /// An operator.
     Operator,
+    /// A type parameter.
     TypeParameter,
+    /// An unknown completion item kind.
+    #[serde(other)]
+    Unknown,
 }
 
-/// The kind of a `CompletionItem`.
-#[lsp_kind]
-enum CompletionItemKind {
-    Text = 1,
-    Method,
-    Function,
-    Constructor,
-    Field,
-    Variable,
-    Class,
-    Interface,
-    Module,
-    Property,
-    Unit,
-    Value,
-    Enum,
-    Keyword,
-    Snippet,
-    Color,
-    File,
-    Reference,
-    Folder,
-    EnumMember,
-    Constant,
-    Struct,
-    Event,
-    Operator,
-    TypeParameter,
+impl CompletionItemKind {
+    /// Returns if `CompletionItemKind` is supported by version 1.
+    pub fn is_version1(self) -> bool {
+        self <= CompletionItemKind::Reference
+    }
+}
+
+impl Default for CompletionItemKind {
+    fn default() -> Self {
+        CompletionItemKind::Text
+    }
 }
 
 /// Describes capabilities specific to parameter information.
@@ -467,22 +399,20 @@ struct ParameterInformationCapabilities {
 }
 
 /// Describes capabilities specific to `CodeActionKind`s.
-#[lsp_object(allow_missing)]
-struct CodeActionKindCapabilities {
-    // TODO: Does it make sense to add an attribute for the fall back statement?
-    // TODO: Is there a way for serde to handle unknown CodeActionKinds?
-    /// The supported `CodeActionKind` values.
-    ///
-    /// If present, falls back to a default value when unknown.
-    value_set: Elective<Vec<String>>,
-}
+// TODO: String should be converted to CodeActionKind after finding a way to represent hierarchy of
+// CodeActionKinds using serde.
+#[lsp_object(value_set("String"))]
+struct CodeActionKindCapabilities {}
 
-// TODO: Is there a way to represent hierarchy of CodeActionKinds using serde?
-
-#[lsp_kind]
+/// The trace setting of the server.
+#[lsp_kind(type = "string")]
+#[derive(Clone, Copy)]
 pub enum TraceKind {
+    /// No messages are output.
     Off,
+    /// Some messages are output.
     Messages,
+    /// All messages are output.
     Verbose,
 }
 
@@ -547,10 +477,11 @@ pub struct ServerCapabilities {
     rename_provider: BooleanOrOptions<RenameOptions>,
     /// Provides document link support.
     document_link_provider: DocumentLinkOptions,
-    /// Provies color provider support.
+    /// Provides color provider support.
     color_provider: BooleanOrOptionsOrStaticDocumentSelectorOptions<ColorProviderOptions>,
     /// Provides folding provider support.
-    folding_range_provider: BooleanOrOptionsOrStaticDocumentSelectorOptions<FoldingRangeProviderOptions>,
+    folding_range_provider:
+        BooleanOrOptionsOrStaticDocumentSelectorOptions<FoldingRangeProviderOptions>,
     /// Provides goto declaration support.
     declaration_provider: BooleanOrOptions<GotoOptions>,
     /// Provides execute command support.
@@ -561,10 +492,12 @@ pub struct ServerCapabilities {
     experimental: Elective<Value>,
 }
 
+/// Information about text document synchronization.
 #[lsp_kind]
-#[serde(untagged)]
 pub enum TextDocumentSyncProvider {
+    /// Options about the text documents to by synced.
     Options(TextDocumentSyncOptions),
+    /// The kind of text Documents to be synced.
     Kind(TextDocumentSyncKind),
 }
 
@@ -575,7 +508,8 @@ impl Default for TextDocumentSyncProvider {
 }
 
 /// How the client should sync document changes with the server.
-#[lsp_kind(number)]
+#[lsp_kind(type = "number")]
+#[derive(Copy, Clone)]
 pub enum TextDocumentSyncKind {
     /// Documents should not be synced at all.
     None = 0,
@@ -592,23 +526,31 @@ impl Default for TextDocumentSyncKind {
 }
 
 /// Completion options.
-#[lsp_object(allow_missing, triggers = "completion", resolve_provider = "completion")]
-struct CompletionOptions {
-}
+#[lsp_object(
+    allow_missing,
+    trigger_characters = "completion",
+    resolve_provider = "completion"
+)]
+struct CompletionOptions {}
 
 /// Signature help options.
-#[lsp_object(allow_missing, triggers = "signature help")]
-struct SignatureHelpOptions {
-}
+#[lsp_object(allow_missing, trigger_characters = "signature help")]
+struct SignatureHelpOptions {}
 
-#[lsp_object(document_selector, static_registration)]
+#[lsp_object(static_registration)]
 struct GotoOptions {
+    /// Identifies the scope of the registration.
+    ///
+    /// If `Option::None`, `DocumentSelector` provided by client will be used.
+    document_selector: Option<char>,
 }
 
+/// Either a boolean or `T`.
 #[lsp_kind]
-#[serde(untagged)]
 enum BooleanOrOptions<T> {
+    /// A boolean.
     Boolean(bool),
+    /// `T`.
     Options(T),
 }
 
@@ -628,8 +570,7 @@ struct CodeActionOptions {
 
 /// Code lens options.
 #[lsp_object(allow_missing, resolve_provider = "code lens")]
-struct CodeLensOptions {
-}
+struct CodeLensOptions {}
 
 /// Format document on type options.
 #[lsp_object]
@@ -650,29 +591,36 @@ struct RenameOptions {
 
 /// Document link options.
 #[lsp_object(allow_missing, resolve_provider = "document links")]
-struct DocumentLinkOptions {
-}
+struct DocumentLinkOptions {}
 
-#[lsp_object(document_selector, static_registration)]
+// TODO: Look into how to remove repetition for document_selector.
+// TODO: Add DocumentSelector object.
+#[lsp_object(static_registration)]
 struct StaticDocumentSelectorOptions<T> {
+    /// Identifies the scope of the registration.
+    ///
+    /// If `Option::None`, `DocumentSelector` provided by client will be used.
+    document_selector: Option<char>,
+    /// The options.
     options: T,
 }
 
 /// Color provider options.
 #[lsp_object]
-struct ColorProviderOptions {
-}
+struct ColorProviderOptions {}
 
 /// Folding range provider options.
 #[lsp_object]
-struct FoldingRangeProviderOptions {
-}
+struct FoldingRangeProviderOptions {}
 
+/// One of a boolean, `T`, or `StaticDocumentSelectorOptions<T>`.
 #[lsp_kind]
-#[serde(untagged)]
 enum BooleanOrOptionsOrStaticDocumentSelectorOptions<T> {
+    /// A boolean.
     Boolean(bool),
+    /// Only `T`.
     Options(T),
+    /// Adds static registration and document selector fields to `T`.
     StaticDocumentSelectorOptions(StaticDocumentSelectorOptions<T>),
 }
 
@@ -726,10 +674,14 @@ struct SaveOptions {
     include_text: bool,
 }
 
+/// Change notification options.
 #[lsp_kind]
-#[serde(untagged)]
 enum ChangeNotificationsOptions {
+    /// Supports change notifications.
     Boolean(bool),
+    /// The identifier that can unregister change notifications.
+    ///
+    /// Specifies support for change notifications.
     Id(String),
 }
 
@@ -741,12 +693,12 @@ impl Default for ChangeNotificationsOptions {
 
 /// Notification sent from client to server after client receives `InitializeResult`.
 #[lsp_object]
-pub struct InitializedParams {
-}
+pub struct InitializedParams {}
 
 /// Request sent from server to client to register for a new capability on the client side.
 #[lsp_object]
 pub struct RegistrationParams {
+    /// Registrations requested by the server.
     pub registrations: Vec<Registration>,
 }
 
@@ -763,8 +715,7 @@ pub struct Registration {
 
 /// Response to `client/registerCapability` request.
 #[lsp_object]
-struct RegistrationResult {
-}
+struct RegistrationResult {}
 
 /// Notification sent from the client to server to signal newly opened text documents.
 #[lsp_object]
@@ -775,28 +726,7 @@ pub struct DidOpenTextDocumentParams {
 
 impl From<TextDocumentItem> for DidOpenTextDocumentParams {
     fn from(text_document: TextDocumentItem) -> Self {
-        DidOpenTextDocumentParams { text_document }
-    }
-}
-
-/// An item to transfer a text document from the client to the server.
-#[lsp_object]
-#[derive(Clone)]
-pub struct TextDocumentItem {
-    /// URI of text document.
-    pub uri: String,
-    // TODO: Add language identifier enum.
-    /// Language identifier of text document.
-    pub language_id: String,
-    /// Version number of text document.
-    pub version: i64,
-    /// Content of the text document.
-    pub text: String,
-}
-
-impl TextDocumentItem {
-    pub fn increment_version(&mut self) {
-        self.version += 1;
+        Self { text_document }
     }
 }
 
@@ -812,8 +742,12 @@ pub struct DidChangeTextDocumentParams {
 }
 
 impl DidChangeTextDocumentParams {
-    pub fn new(text_document: VersionedTextDocumentIdentifier, content_changes: Vec<TextDocumentContentChangeEvent>) -> Self {
-        DidChangeTextDocumentParams {
+    /// Creates a new `DidChangeTextDocumentParams`.
+    pub const fn new(
+        text_document: VersionedTextDocumentIdentifier,
+        content_changes: Vec<TextDocumentContentChangeEvent>,
+    ) -> Self {
+        Self {
             text_document,
             content_changes,
         }
@@ -855,83 +789,13 @@ pub struct TextDocumentContentChangeEvent {
 }
 
 impl TextDocumentContentChangeEvent {
+    /// Creates a new `TextDocumentContentChangeEvent`.
     pub fn new(range: Range, text: String) -> Self {
-        TextDocumentContentChangeEvent {
+        Self {
             range: Elective::Present(range),
             range_length: Elective::Absent,
             text,
         }
-    }
-}
-
-/// Start and end `Position`s where the end `Position` is exclusive.
-#[lsp_object]
-#[derive(Clone, Copy, Eq, PartialEq)]
-pub struct Range {
-    /// Start `Position` of the `Range`.
-    pub start: Position,
-    /// End `Position` of the `Range`.
-    pub end: Position,
-}
-
-impl Range {
-    pub fn with_line(line: u64) -> Self {
-        Range::with_partial_line(line, 0, u64::max_value())
-    }
-
-    pub fn with_partial_line(line: u64, start: u64, end: u64) -> Self {
-        Range {
-            start: Position { line, character: start },
-            end: Position { line, character: end },
-        }
-    }
-}
-
-impl From<Position> for Range {
-    fn from(value: Position) -> Self {
-        Range {
-            start: value,
-            end: value,
-        }
-    }
-}
-
-/// A line and character offset of a text document.
-#[lsp_object]
-#[derive(Clone, Copy, Eq, PartialEq)]
-pub struct Position {
-    /// Zero-based index of the line.
-    pub line: u64,
-    /// Zero-based character offset of a line that represents the gap before the character at the
-    /// offset. 
-    ///
-    /// If `character` is greater than the line length, it defaults to the line length.
-    pub character: u64,
-}
-
-impl Position {
-    pub fn move_up(&mut self) {
-        self.line -= 1;
-    }
-
-    pub fn move_to_end_of_line(&mut self) {
-        self.character = u64::max_value();
-    }
-
-    pub fn move_left(&mut self) {
-        self.character -= 1;
-    }
-
-    pub fn move_right(&mut self) {
-        self.character += 1;
-    }
-
-    pub fn is_first_character(&self) -> bool {
-        self.character == 0
-    }
-
-    pub fn is_first_line(&self) -> bool {
-        self.line == 0
     }
 }
 
@@ -942,55 +806,4 @@ pub struct PublishDiagnosticsParams {
     uri: String,
     /// Diagnostic information items.
     diagnostics: Vec<Diagnostic>,
-}
-
-/// A diagnostic such as a compiler error or warning.
-#[lsp_object]
-struct Diagnostic {
-    /// `Range` at which the message applies.
-    range: Range,
-    /// The severity of the diagnostic.
-    ///
-    /// If `Elective::Absent`, client is responsible for interpreting severity.
-    severity: Elective<DiagnosticSeverity>,
-    /// Code of the diagnostic.
-    code: Elective<DiagnosticCode>,
-    /// Human-readable description of the source of the diagnostic.
-    source: Elective<String>,
-    /// Message of the diagnostic.
-    message: String,
-    /// Related information about a diagnostic.
-    related_information: Elective<Vec<DiagnosticRelatedInformation>>,
-}
-
-/// Supported severities of a diagnostic.
-#[lsp_kind]
-enum DiagnosticSeverity {
-    Error = 1,
-    Warning,
-    Information,
-    Hint,
-}
-
-#[lsp_kind]
-#[serde(untagged)]
-enum DiagnosticCode {
-    Number(i64),
-    String(String),
-}
-
-/// A related message for a `Diagnostic`.
-#[lsp_object]
-struct DiagnosticRelatedInformation {
-    /// Location of the related information.
-    location: Location,
-    /// Message of the related information.
-    message: String,
-}
-
-/// A `Range` in a text document.
-#[lsp_object]
-struct Location {
-    uri: String,
-    range: Range,
 }
